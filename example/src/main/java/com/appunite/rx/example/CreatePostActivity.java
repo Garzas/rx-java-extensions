@@ -56,7 +56,7 @@ public class CreatePostActivity extends BaseActivity {
 
         ButterKnife.inject(this);
 
-    //    toolbar.setNavigationIcon(R.drawable.ic_cancel_white_24dp);
+        toolbar.setNavigationIcon(R.drawable.cancel_copy);
 
         final CreatePostPresenter createPostPresenter = new CreatePostPresenter(AndroidSchedulers.mainThread(),
                 FakeDagger.getPostsDaoInstance(getApplicationContext()));

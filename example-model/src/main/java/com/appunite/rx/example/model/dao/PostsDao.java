@@ -18,6 +18,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 
+import java.util.concurrent.TimeUnit;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Singleton;
@@ -41,11 +43,15 @@ public class PostsDao {
     @Nonnull
     private final PublishSubject<AddPost> sendPost= PublishSubject.create();
     @Nonnull
+    private final PublishSubject<String> deletePost= PublishSubject.create();
+    @Nonnull
     private final PublishSubject<Object> refreshSubject = PublishSubject.create();
     @Nonnull
     private final LoadingCache<String, PostDao> cache;
     @Nonnull
     private final PublishSubject<ResponseOrError<Response>> postSuccesObserver = PublishSubject.create();
+    @Nonnull
+    private final PublishSubject<ResponseOrError<Object>> deletePostSuccesObserver = PublishSubject.create();
     @Nonnull
     private final Scheduler networkScheduler;
     @Nonnull
@@ -99,6 +105,17 @@ public class PostsDao {
                 .observeOn(uiScheduler)
                 .subscribe(postSuccesObserver);
 
+        deletePost
+                .flatMap(new Func1<String, Observable<ResponseOrError<Object>>>() {
+                    @Override
+                    public Observable<ResponseOrError<Object>> call(String s) {
+                        return guestbookService.deletePost(s)
+                                .subscribeOn(networkScheduler)
+                                .compose(ResponseOrError.toResponseOrErrorObservable());
+                    }
+                })
+                .observeOn(uiScheduler)
+                .subscribe(deletePostSuccesObserver);
 
         posts = loadMoreSubject.startWith((Object) null)
                 .lift(mergePostsNextToken)
@@ -176,6 +193,16 @@ public class PostsDao {
     @Nonnull
     public Observable<ResponseOrError<Response>> getPostSuccesObserver() {
         return postSuccesObserver;
+    }
+
+    @Nonnull
+    public Observable<ResponseOrError<Object>> deletePostSuccesObservable() {
+        return deletePostSuccesObserver;
+    }
+
+    @Nonnull
+    public Observer<String> deletePostObserver() {
+        return deletePost;
     }
 
     @Nonnull

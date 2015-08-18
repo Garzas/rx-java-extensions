@@ -22,6 +22,7 @@ import javax.annotation.Nonnull;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
+import retrofit.client.Response;
 import rx.android.view.ViewActions;
 import rx.android.view.ViewObservable;
 import rx.functions.Action1;
@@ -54,7 +55,6 @@ public class MainActivity extends BaseActivity {
         // Normally use dagger
         final MainPresenter presenter = new MainPresenter(FakeDagger.getPostsDaoInstance(getApplication()));
 
-
         presenter.titleObservable()
                 .compose(lifecycleMainObservable.<String>bindLifecycle())
                 .subscribe(MoreViewActions.setTitle(toolbar));
@@ -75,6 +75,10 @@ public class MainActivity extends BaseActivity {
         presenter.openDetailsObservable()
                 .compose(lifecycleMainObservable.<MainPresenter.AdapterItem>bindLifecycle())
                 .subscribe(startDetailsActivityAction(this));
+
+        presenter.deletePostObservable()
+                .compose(lifecycleMainObservable.<String>bindLifecycle())
+                .subscribe(presenter.deletePostObserver());
 
         MoreViewObservables.scroll(recyclerView)
                 .filter(LoadMoreHelper.mapToNeedLoadMore(layoutManager, mainAdapter))

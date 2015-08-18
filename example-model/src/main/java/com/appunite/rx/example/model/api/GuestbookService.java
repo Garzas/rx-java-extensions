@@ -10,6 +10,7 @@ import javax.annotation.Nullable;
 
 import retrofit.client.Response;
 import retrofit.http.Body;
+import retrofit.http.DELETE;
 import retrofit.http.GET;
 import retrofit.http.POST;
 import retrofit.http.Path;
@@ -33,5 +34,9 @@ public interface GuestbookService {
     @POST("/v1/posts")
     @Nonnull
     Observable<Response> createPost(@Body @Nonnull AddPost addPost);
+
+    @DELETE("/v1/posts/{id}")
+    @Nonnull
+    Observable<Response> deletePost(@Path("id")  String id);
 
 }

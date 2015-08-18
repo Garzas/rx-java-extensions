@@ -81,6 +81,7 @@ public class MainAdapter extends RecyclerView.Adapter<BaseViewHolder> implements
         @Nonnull
         private final TextView text;
         private CompositeSubscription subscription;
+        private CompositeSubscription deleteItemsubscription;
 
         public MainViewHolder(@Nonnull View itemView) {
             super(itemView);
@@ -93,11 +94,14 @@ public class MainAdapter extends RecyclerView.Adapter<BaseViewHolder> implements
             subscription = new CompositeSubscription(
                     ViewObservable.clicks(text).subscribe(item.clickObserver()));
 
+            deleteItemsubscription = new CompositeSubscription(
+                    MoreViewObservables.longClicks(text).subscribe(item.onlongClickDeleteItemObserver()));
         }
 
         @Override
         public void recycle() {
             subscription.unsubscribe();
+            deleteItemsubscription.unsubscribe();
         }
 
     }
