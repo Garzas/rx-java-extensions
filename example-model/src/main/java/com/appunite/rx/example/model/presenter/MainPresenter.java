@@ -45,13 +45,15 @@ public class MainPresenter {
     @Nonnull
     private final Subject<AdapterItem, AdapterItem> openDetailsSubject = PublishSubject.create();
     @Nonnull
-    private final PublishSubject<String> deletePostSubject = PublishSubject.create();
+    private final PublishSubject<String> choiceMenuSubject = PublishSubject.create();
     @Nonnull
     private final PostsDao postsDao;
     @Nonnull
     private final PublishSubject<Object> clickOnFabSubject = PublishSubject.create();
     @Nonnull
     private final Observable<ArrayList<String>> deleteListObservable;
+    @Nonnull
+    private final PublishSubject<String> editActivitySubject = PublishSubject.create();
 
     public MainPresenter(@Nonnull final PostsDao postsDao) {
         this.postsDao = postsDao;
@@ -80,9 +82,9 @@ public class MainPresenter {
                 }))
                 .compose(ObservableExtensions.<ResponseOrError<List<AdapterItem>>>behaviorRefCount());
 
-        deleteListObservable = deletePostSubject
+        deleteListObservable = choiceMenuSubject
                 .lift(OperatorSampleWithLastWithObservable.<String>
-                        create(postsDao.deletePostSuccesObservable().compose(ResponseOrError.onlySuccess())))
+                        create(postsDao.deletePostSuccesObservable()))
                 .scan(new ArrayList<String>(), new Func2<ArrayList<String>, String, ArrayList<String>>() {
                     @Override
                     public ArrayList<String> call(ArrayList<String> strings, String s) {
@@ -119,6 +121,11 @@ public class MainPresenter {
     }
 
     @Nonnull
+    public Observer<Object> finishedActivityObserver() {
+        return postsDao.refreshListObserver();
+    }
+
+    @Nonnull
     private Observable<ResponseOrError<PostsResponse>> postsObservable2() {
         return this.postsDao.postsIdsObservable()
                 .compose(ResponseOrError.switchMap(new Func1<PostsIdsResponse, Observable<ResponseOrError<PostsResponse>>>() {
@@ -149,9 +156,10 @@ public class MainPresenter {
     public Observable<AdapterItem> openDetailsObservable() {
         return openDetailsSubject;
     }
+
     @Nonnull
-    public  Observable<String> deletePostObservable() {
-        return deletePostSubject;
+    public Observable<String> choiceMenuObservable() {
+        return choiceMenuSubject;
     }
 
     @Nonnull
@@ -199,6 +207,17 @@ public class MainPresenter {
     public Observer<String> deletePostObserver() {
         return postsDao.deletePostObserver();
     }
+
+    @Nonnull
+    public Observer<String> editPostObserver() {
+        return editActivitySubject;
+    }
+
+    @Nonnull
+    public Observable<String> startEditActivityObservable() {
+        return editActivitySubject;
+    }
+
 
     public class AdapterItem implements SimpleDetector.Detectable<AdapterItem> {
 
@@ -261,11 +280,11 @@ public class MainPresenter {
         }
 
         @Nonnull
-        public Observer<Object> onlongClickDeleteItemObserver() {
+        public Observer<Object> onlongClickChoiceItemObserver() {
             return Observers.create(new Action1<Object>() {
                 @Override
                 public void call(Object o) {
-                    deletePostSubject.onNext(AdapterItem.this.id);
+                    choiceMenuSubject.onNext(AdapterItem.this.id);
                 }
             });
         }

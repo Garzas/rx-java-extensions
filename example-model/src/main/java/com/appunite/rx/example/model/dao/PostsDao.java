@@ -11,27 +11,23 @@ import com.appunite.rx.example.model.model.PostsIdsResponse;
 import com.appunite.rx.example.model.model.PostsResponse;
 import com.appunite.rx.operators.MoreOperators;
 import com.appunite.rx.operators.OperatorMergeNextToken;
-import com.appunite.rx.operators.OperatorSampleWithLastWithObservable;
 import com.appunite.rx.subjects.CacheSubject;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 
-import java.util.concurrent.TimeUnit;
+import java.util.Objects;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.inject.Singleton;
 
-import retrofit.RetrofitError;
 import retrofit.client.Response;
 import rx.Observable;
 import rx.Observer;
 import rx.Scheduler;
-import rx.Subscription;
 import rx.functions.Func1;
-import rx.functions.Func2;
 import rx.subjects.PublishSubject;
 
 @Singleton
@@ -51,7 +47,9 @@ public class PostsDao {
     @Nonnull
     private final PublishSubject<ResponseOrError<Response>> postSuccesObserver = PublishSubject.create();
     @Nonnull
-    private final PublishSubject<ResponseOrError<Object>> deletePostSuccesObserver = PublishSubject.create();
+    private final PublishSubject<ResponseOrError<Object>> deletePostObserver = PublishSubject.create();
+    @Nonnull
+    private final PublishSubject<ResponseOrError<PostWithBody>> getPostWithBodySubject = PublishSubject.create();
     @Nonnull
     private final Scheduler networkScheduler;
     @Nonnull
@@ -60,6 +58,14 @@ public class PostsDao {
     private final GuestbookService guestbookService;
     @Nonnull
     private final PublishSubject<Object> loadMoreSubject = PublishSubject.create();
+    @Nonnull
+    private final PublishSubject<String> getPost = PublishSubject.create();
+    @Nonnull
+    private final PublishSubject<PostWithBody> updatePost = PublishSubject.create();
+    @Nonnull
+    private final PublishSubject<ResponseOrError<Response>> updatePostObserver = PublishSubject.create();
+    @Nonnull
+    private final PublishSubject<Object> refreshListSubject = PublishSubject.create();
 
     public PostsDao(@Nonnull final Scheduler networkScheduler,
                     @Nonnull final Scheduler uiScheduler,
@@ -115,7 +121,31 @@ public class PostsDao {
                     }
                 })
                 .observeOn(uiScheduler)
-                .subscribe(deletePostSuccesObserver);
+                .subscribe(deletePostObserver);
+
+        getPost
+                .flatMap(new Func1<String, Observable<ResponseOrError<PostWithBody>>>() {
+                    @Override
+                    public Observable<ResponseOrError<PostWithBody>> call(String id) {
+                        return guestbookService.getPost(id)
+                                .subscribeOn(networkScheduler)
+                                .compose(ResponseOrError.<PostWithBody>toResponseOrErrorObservable());
+                    }
+                })
+                .observeOn(uiScheduler)
+                .subscribe(getPostWithBodySubject);
+
+        updatePost
+                .flatMap(new Func1<PostWithBody, Observable<ResponseOrError<Response>>>() {
+                    @Override
+                    public Observable<ResponseOrError<Response>> call(PostWithBody postWithBody) {
+                        return guestbookService.updatePost(postWithBody, postWithBody.id())
+                                .subscribeOn(networkScheduler)
+                                .compose(ResponseOrError.<Response>toResponseOrErrorObservable());
+                    }
+                })
+                .observeOn(uiScheduler)
+                .subscribe(updatePostObserver);
 
         posts = loadMoreSubject.startWith((Object) null)
                 .lift(mergePostsNextToken)
@@ -166,6 +196,11 @@ public class PostsDao {
     }
 
     @Nonnull
+    public Observable<ResponseOrError<PostWithBody>> getPostWithBodyObservable() {
+        return getPostWithBodySubject;
+    }
+
+    @Nonnull
     public PostDao postDao(@Nonnull final String id) {
         return cache.getUnchecked(id);
     }
@@ -191,13 +226,18 @@ public class PostsDao {
     }
 
     @Nonnull
-    public Observable<ResponseOrError<Response>> getPostSuccesObserver() {
+    public Observable<ResponseOrError<Response>> getPostObservable() {
         return postSuccesObserver;
     }
 
     @Nonnull
-    public Observable<ResponseOrError<Object>> deletePostSuccesObservable() {
-        return deletePostSuccesObserver;
+    public Observable<Object> deletePostSuccesObservable() {
+        return deletePostObserver.compose(ResponseOrError.onlySuccess());
+    }
+
+    @Nonnull
+    public Observable<ResponseOrError<Response>> getUpdatedPostObservable() {
+        return updatePostObserver;
     }
 
     @Nonnull
@@ -208,6 +248,18 @@ public class PostsDao {
     @Nonnull
     public Observer<AddPost> postRequestObserver() {
         return sendPost;
+    }
+
+    public Observer<? super String> postIdObserver() {
+        return getPost;
+    }
+
+    public Observer<PostWithBody> updatePostRequestObserver() {
+        return updatePost;
+    }
+
+    public Observer<Object> refreshListObserver() {
+        return refreshListSubject;
     }
 
     public class PostDao {

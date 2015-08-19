@@ -29,7 +29,11 @@
             android:label="@string/app_name">
 
         </activity>
+        <activity
+            android:name=".EditPostActivity"
+            android:label="@string/app_name">
 
+        </activity>
     </application>
 
 </manifest>

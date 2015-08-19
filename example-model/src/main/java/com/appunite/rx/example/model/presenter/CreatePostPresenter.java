@@ -1,6 +1,5 @@
 package com.appunite.rx.example.model.presenter;
 
-import com.appunite.rx.ObservableExtensions;
 import com.appunite.rx.ResponseOrError;
 import com.appunite.rx.dagger.UiScheduler;
 import com.appunite.rx.example.model.dao.PostsDao;
@@ -8,13 +7,13 @@ import com.appunite.rx.example.model.model.AddPost;
 import com.appunite.rx.operators.OperatorSampleWithLastWithObservable;
 import com.google.common.collect.ImmutableList;
 import com.appunite.rx.operators.OnSubscribeCombineLatestWithoutBackPressure;
+
 import javax.annotation.Nonnull;
 
 import retrofit.client.Response;
 import rx.Observable;
 import rx.Observer;
 import rx.Scheduler;
-import rx.functions.Func1;
 import rx.functions.Func2;
 import rx.subjects.PublishSubject;
 
@@ -53,19 +52,19 @@ public class CreatePostPresenter {
                 .lift(OperatorSampleWithLastWithObservable.<AddPost>create(sendSubject))
                 .subscribe(postsDao.postRequestObserver());
 
-        postSucces = postsDao.getPostSuccesObserver();
+        postSucces = postsDao.getPostObservable();
     }
 
     @Nonnull
-    public Observer<String> bodyObservable() {
+    public Observer<String> bodyObserver() {
         return bodySubject;
     }
     @Nonnull
-    public Observer<String> nameObservable() {
+    public Observer<String> nameObserver() {
         return nameSubject;
     }
     @Nonnull
-    public Observer<Object> sendObservable() {
+    public Observer<Object> sendObserver() {
         return sendSubject;
     }
     @Nonnull

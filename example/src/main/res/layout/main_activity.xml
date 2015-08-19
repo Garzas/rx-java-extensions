@@ -12,7 +12,6 @@
         android:layout_gravity="top"
         android:minHeight="?attr/actionBarSize"
         android:theme="@style/Toolbar" />
-
     <FrameLayout
         android:layout_marginTop="?attr/actionBarSize"
         android:layout_width="match_parent"

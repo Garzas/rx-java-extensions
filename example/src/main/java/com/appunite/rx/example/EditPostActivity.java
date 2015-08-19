@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -12,6 +13,7 @@ import android.widget.Toast;
 import com.appunite.rx.android.MoreViewObservables;
 import com.appunite.rx.example.dagger.FakeDagger;
 import com.appunite.rx.example.model.presenter.CreatePostPresenter;
+import com.appunite.rx.example.model.presenter.EditPostPresenter;
 
 import javax.annotation.Nonnull;
 
@@ -29,44 +31,51 @@ import rx.functions.Func1;
 
 import static com.appunite.rx.internal.Preconditions.checkNotNull;
 
-public class CreatePostActivity extends BaseActivity {
+public class EditPostActivity extends BaseActivity {
 
     private static final String EXTRA_ID = "EXTRA_ID";
 
     public static Intent getIntent(@Nonnull Context context, @Nonnull String id) {
-        return new Intent(context, CreatePostActivity.class)
+        return new Intent(context, EditPostActivity.class)
                 .putExtra(EXTRA_ID, checkNotNull(id));
     }
 
-    @InjectView(R.id.create_post_toolbar)
+    @InjectView(R.id.edit_post_toolbar)
     Toolbar toolbar;
     @InjectView(R.id.accept_button)
     ImageView acceptButton;
-    @InjectView(R.id.create_post_body_text)
+    @InjectView(R.id.edit_post_body_text)
     EditText bodyText;
-    @InjectView(R.id.create_post_name_text)
+    @InjectView(R.id.edit_post_name_text)
     EditText nameText;
-    @InjectView(R.id.create_post_activity_error)
+    @InjectView(R.id.edit_post_activity_error)
     TextView error;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.create_post_activity);
-
+        setContentView(R.layout.edit_post_activity);
+        final String id = checkNotNull(getIntent().getStringExtra(EXTRA_ID));
         ButterKnife.inject(this);
-
         toolbar.setNavigationIcon(R.drawable.cancel_copy);
 
-        final CreatePostPresenter createPostPresenter = new CreatePostPresenter(AndroidSchedulers.mainThread(),
-                FakeDagger.getPostsDaoInstance(getApplicationContext()));
 
+        final EditPostPresenter editPostPresenter = new EditPostPresenter(AndroidSchedulers.mainThread(),
+                FakeDagger.getPostsDaoInstance(getApplicationContext()), id);
+
+        editPostPresenter.nameObservable()
+                .compose(lifecycleMainObservable.<String>bindLifecycle())
+                .subscribe(ViewActions.setText(nameText));
+
+        editPostPresenter.bodyObservable()
+                .compose(lifecycleMainObservable.<String>bindLifecycle())
+                .subscribe(ViewActions.setText(bodyText));
 
         MoreViewObservables.navigationClick(toolbar)
                 .compose(lifecycleMainObservable.bindLifecycle())
-                .subscribe(createPostPresenter.navigationClickObserver());
+                .subscribe(editPostPresenter.navigationClickObserver());
 
-        createPostPresenter.closeActivityObservable()
+        editPostPresenter.closeActivityObservable()
                 .compose(lifecycleMainObservable.bindLifecycle())
                 .subscribe(new Action1<Object>() {
                     @Override
@@ -83,19 +92,19 @@ public class CreatePostActivity extends BaseActivity {
                     }
                 })
                 .compose(lifecycleMainObservable.bindLifecycle())
-                .subscribe(createPostPresenter.sendObserver());
+                .subscribe(editPostPresenter.sendObserver());
 
         WidgetObservable.text(bodyText)
                 .map(new OnTextChangeAction())
                 .compose(lifecycleMainObservable.<String>bindLifecycle())
-                .subscribe(createPostPresenter.bodyObserver());
+                .subscribe(editPostPresenter.bodyObserver());
 
         WidgetObservable.text(nameText)
                 .map(new OnTextChangeAction())
                 .compose(lifecycleMainObservable.<String>bindLifecycle())
-                .subscribe(createPostPresenter.nameObserver());
+                .subscribe(editPostPresenter.nameObserver());
 
-        createPostPresenter.finishActivityObservable()
+        editPostPresenter.finishActivityObservable()
                 .compose(lifecycleMainObservable.<Response>bindLifecycle())
                 .subscribe(new Action1<Response>() {
                     @Override
@@ -104,7 +113,7 @@ public class CreatePostActivity extends BaseActivity {
                     }
                 });
 
-        createPostPresenter.postErrorObservable()
+        editPostPresenter.postErrorObservable()
                 .compose(lifecycleMainObservable.<Throwable>bindLifecycle())
                 .subscribe(new Action1<Throwable>() {
                     @Override
@@ -113,7 +122,7 @@ public class CreatePostActivity extends BaseActivity {
                     }
                 });
 
-        createPostPresenter.errorObservable()
+        editPostPresenter.errorObservable()
                 .map(ErrorHelper.mapThrowableToStringError())
                 .compose(lifecycleMainObservable.<String>bindLifecycle())
                 .subscribe(ViewActions.setText(error));
